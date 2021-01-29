@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Cliente Websocket</title>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+<style>
+	body {
+	background: #E5DDD5 url("https://www.toptal.com/designers/subtlepatterns/patterns/sports.png") fixed;
+}
+.page-header {
+	background: #1f1f1f;
+	margin: 0;
+  padding: 20px 0 10px;
+	color: #FFFFFF;
+	position: fixed;
+	width: 100%;
+  z-index: 1
+}
+.main {
+	height: 100vh;
+	padding-top: 70px;
+}
+
+.chat-log {
+	padding: 40px 0 114px;
+	height: auto;
+	overflow: auto;
+}
+.chat-log__item {
+	background: #fafafa;
+	padding: 10px;
+	margin: 0 auto 20px;
+	max-width: 80%;
+	float: left;
+	border-radius: 4px;
+	box-shadow: 0 1px 2px rgba(0,0,0,.1);
+	clear: both;
+}
+
+.chat-log__item.chat-log__item--own {
+	float: right;
+	background: #DCF8C6;
+	text-align: right;
+}
+
+.chat-form {
+	background: #DDDDDD;
+	padding: 40px 0;
+	position: fixed;
+	bottom: 0;
+	width: 100%;
+}
+
+.chat-log__author {
+	margin: 0 auto .5em;
+	font-size: 14px;
+	font-weight: bold;
+}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.0/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<script type="text/javascript">
+	var stompClient = null;
+
+	function setConnected(connected, sessionId = "") {
+		document.getElementById('connect').disabled = connected;
+		document.getElementById('disconnect').disabled = !connected;
+		//document.getElementById('sendMessage').style.visibility = connected ? 'visible' : 'hidden';
+		
+		
+		document.getElementById('sendMessage').disabled = !connected;
+		document.getElementById('message').disabled = !connected;
+
+		document.getElementById('response-value').innerHTML = '<b>Anote sua sessão: </b>'+sessionId;
+		document.getElementById('date').innerText = new Date().toLocaleString('pt-BR', {timeZone: 'UTC'});;
+
+		document.getElementById('response-item').style.visibility = connected ? 'visible' : 'hidden'
+
+		//document.getElementById('session-content').removeAttribute("hidden"); 
+		
+		
+	}
+
+	function connect() {
+		stompClient = Stomp.client("ws://localhost:8080/gateway/socket");
+		stompClient.debug = () => {};
+		stompClient.connect({}, function(frame) {
+			setConnected(true, frame.headers['user-name']);
+			console.log('Connected: ' + frame);
+			
+			stompClient.subscribe('/topic/chat', function(response) {
+				showNewMessage(JSON.parse(response.body)['message']);
+			});
+			stompClient.subscribe('/user/topic/notify', function(response) {
+				showNewMessage(response.body);
+			});
+		});
+	}
+
+	function disconnect() {
+		stompClient.disconnect();
+		setConnected(false);
+		console.log("Disconnected");
+		var chat = document.querySelector('.chat-log');
+		while (chat.children.length > 1) {
+			chat.removeChild(chat.lastChild);
+		}
+	}
+
+	function sendMessage() {
+		var input = document.getElementById('message');
+		var message = input.value;
+		stompClient.send("/send/chat", {}, JSON.stringify({
+			'message' : message
+		}));
+		input.value = "";
+	}
+
+	function showNewMessage(message) {
+		var elem = document.querySelector('#response-item');
+		var clone = elem.cloneNode(true);
+		var id = 'response-item'+'_' + Math.random().toString(36).substr(2, 9);
+		clone.id = id;
+		clone.querySelector("#response-value").innerText = message;
+
+		document.querySelector('.chat-log').appendChild(clone);
+		location.hash = "#" + id;
+		bot(message);
+	}
+
+	function copy() {
+		/* Get the text field */
+		var copyText = document.getElementById("session");
+
+		/* Select the text field */
+		copyText.select();
+		copyText.setSelectionRange(0, 99999); /* For mobile devices */
+
+		/* Copy the text inside the text field */
+		document.execCommand("copy");
+
+		/* Alert the copied text */
+		alert("Texto copiado: " + copyText.value);
+	}
+	
+	function bot(message) {
+		var link = message.match(/\bhttps?:\/\/\S+/gi)
+		if(link && link[0].match(/\.(jpeg|jpg|gif|png)$/) && message.includes("bot") && message.includes("background")) {
+			console.log(link[0]);
+			document.body.style.background = '#E5DDD5 url('+link[0]+') fixed';
+		}
+	}
+</script>
+</head>
+<body>
+	<noscript>
+		<h2 style="color: #ff0000">Seems your browser doesn't support Javascript! Websocket relies on Javascript being enabled. Please enable Javascript and reload this page!</h2>
+	</noscript>
+
+	<header class="page-header">
+		<div class="container ">
+				<div class="d-flex justify-content-between">
+						<div>
+							<h2>Chat socket</h2>
+						</div>
+						<div class="d-flex align-items-center justify-content-end">
+							<button class="btn btn-success" id="connect" onclick="connect();">Connect</button>
+							<button class="btn btn-danger ml-2" id="disconnect" disabled="disabled" onclick="disconnect();">Disconnect</button>
+						</div>
+				</div>
+		</div>
+	</header>
+	<div class="main">
+		<div class="container ">
+		<div class="chat-log">
+			<div class="chat-log__item chat-log__item--own" id="response-item" style="visibility: hidden;">
+				<!--<h3 class="chat-log__author">Anote sua sessão: </h3>-->
+				<small id="date">14:30</small>
+				<div class="chat-log__message" id="response-value">BRB</div>
+			</div>
+		</div>
+		</div>
+		<div class="chat-form">
+		<div class="container ">
+				<div class="row">
+					<div class="col-sm-10 col-xs-8">
+					<input type="text" class="form-control" id="message" placeholder="Message" disabled/>
+					</div>
+					<div class="col-sm-2 col-xs-4">
+					<button type="button"  id="sendMessage" onclick="sendMessage();" class="btn btn-success btn-block" disabled>Enviar</button>
+					</div>
+				</div>
+		</div>
+		</div>
+	</div>
+
+	<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+</body>
+</html>

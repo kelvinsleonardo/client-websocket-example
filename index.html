@@ -146,11 +146,19 @@
 	}
 	
 	function bot(message) {
-		var link = message.match(/\bhttps?:\/\/\S+/gi)
-		if(link && link[0].match(/\.(jpeg|jpg|gif|png)$/) && message.includes("bot") && message.includes("background")) {
-			console.log(link[0]);
-			document.body.style.background = '#E5DDD5 url('+link[0]+') fixed';
+		console.log(message.substring(0, 9) === "ler texto");
+		if(message.includes("bot")){
+			var link = message.match(/\bhttps?:\/\/\S+/gi)
+			if(link && link[0].match(/\.(jpeg|jpg|gif|png)$/) && message.includes("background")) {
+				console.log(link[0]);
+				document.body.style.background = '#E5DDD5 url('+link[0]+') fixed';
+			}else if( message.substring(0, 8) === "bot leia"){
+				var messageNew = message.replaceAll("bot leia","");
+				var instance = new SpeechSynthesisUtterance(messageNew);
+				window.speechSynthesis.speak(instance);
+			}
 		}
+		
 	}
 </script>
 </head>
